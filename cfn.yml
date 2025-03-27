@@ -5,23 +5,40 @@ Description: |
   Kittens Carousel Static Website will be deployed on Amazon Linux 2023 EC2 Instance with custom 
   security group which allows http connections on port 80 and ssh port 22 from anywhere. Kittens Carousel Static Website
   is downloaded from my Public Github repository, then deployed on Apache Web Server.
+Parameters:
+  myKeyPair:
+    Description: Select the name of your keyname
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: sym
+  myInstanceType:
+    Description: Select your instance type.
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+      - t3.small
+
+  LatestAmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
 
 Resources:
   myWebServer:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: "ami-08b5b3a93ed654d19"
+      ImageId: !Ref LatestAmiId
 
-      InstanceType: "t2.micro"
+      InstanceType: !Ref myInstanceType
 
-      KeyName: "sym"
+      KeyName: !Ref myKeyPair
 
       SecurityGroupIds:
-        - !Ref MySecGrp
+        - !Ref mySecGrp #!GetAtt mySecGrp.GroupId
 
       Tags:
         - Key: "Name"
-          Value: "sym-myWebServer"
+          Value: !Sub "Web Server of ${AWS::StackName} Stack"
 
       UserData: !Base64 |
         #! /bin/bash
@@ -37,7 +54,7 @@ Resources:
         systemctl start httpd
         systemctl enable httpd
 
-  MySecGrp:
+  mySecGrp:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Enables SSH and HTTP for CFN Instances # Required
@@ -61,5 +78,5 @@ Outputs:
   WebsiteURL:
     Value: !Sub
       - http://${PublicAddress}
-      - PublicAddress: !GetAtt myWebServer.PublicDnsName
+      - PublicAddress: !GetAtt myWebServer.PublicIp
     Description: Kittens Carousel Application URL
